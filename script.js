@@ -11,7 +11,15 @@ function multiply(a, b) {
 }
 
 function divide(a, b) {
-  return a / b;
+  try {
+    if (b === 0) {
+      throw new Error("Division by zero is not allowed.");
+    }
+    return a / b;
+  } catch (error) {
+    expression.length = 0;
+    return populateDisplay("Math Error");
+  }
 }
 
 function operate(operator, a, b) {
@@ -31,9 +39,27 @@ function operate(operator, a, b) {
     return divide(a, b);
   }
 }
-let operatorClicked = false;
+
+function populateDisplay(value) {
+  const displayBox = document.querySelector(".display");
+  displayBox.innerText += value;
+}
+
+function clearDisplay() {
+  const displayBox = document.querySelector(".display");
+  displayBox.innerText = "";
+}
+
+function addEvent(type, selector, callback, parent = document) {
+  parent.addEventListener(type, (e) => {
+    if (e.target.matches(selector)) {
+      callback(e);
+    }
+  });
+}
 
 const expression = [];
+let operatorClicked = false;
 
 function store(value) {
   const lastItem = expression[expression.length - 1];
@@ -49,17 +75,11 @@ function store(value) {
   }
 }
 
-function populateDisplay(value) {
-  const displayBox = document.querySelector(".display");
-  displayBox.innerText += value;
-}
-
-function addEvent(type, selector, callback, parent = document) {
-  parent.addEventListener(type, (e) => {
-    if (e.target.matches(selector)) {
-      callback(e);
-    }
-  });
+function accessStorage() {
+  const a = parseFloat(expression[0]);
+  const b = parseFloat(expression[2]);
+  const operator = expression[1];
+  return { a, b, operator };
 }
 
 addEvent("click", ".digit", (e) => {
@@ -72,20 +92,37 @@ addEvent("click", ".digit", (e) => {
 addEvent("click", ".operator", (e) => {
   const value = e.target.innerText;
   if (operatorClicked === false) {
-    populateDisplay(value);
-    store(value);
-    operatorClicked = true;
+    if (expression.length == 3) {
+      const values = accessStorage();
+      const operator = values.operator;
+      const a = parseFloat(values.a);
+      const b = parseFloat(values.b);
+      const ans = operate(operator, a, b);
+      clearDisplay();
+      populateDisplay(ans);
+      populateDisplay(value);
+      expression.length = 0;
+      store(ans);
+      store(value);
+      operatorClicked = true;
+    } else {
+      populateDisplay(value);
+      store(value);
+      operatorClicked = true;
+    }
   }
 });
 
 addEvent("click", ".operation", (e) => {
-  const a = parseFloat(expression[0]);
-  const b = parseFloat(expression[2]);
-  const operator = expression[1];
+  const values = accessStorage();
+  const operator = values.operator;
+  const a = parseFloat(values.a);
+  const b = parseFloat(values.b);
 
   const ans = operate(operator, a, b);
-
-  populateDisplay(` = ${ans}`);
+  clearDisplay();
+  populateDisplay(ans);
   expression.length = 0;
+  store(ans);
   operatorClicked = false;
 });
