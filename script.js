@@ -1,13 +1,18 @@
+function roundTo(num, decimals) {
+  let factor = 10 ** decimals;
+  return Math.round(num * factor) / factor;
+}
+
 function add(a, b) {
-  return a + b;
+  return roundTo(a + b, 4);
 }
 
 function subtract(a, b) {
-  return a - b;
+  return roundTo(a - b, 4);
 }
 
 function multiply(a, b) {
-  return a * b;
+  return roundTo(a * b, 4);
 }
 
 function divide(a, b) {
@@ -15,10 +20,9 @@ function divide(a, b) {
     if (b === 0) {
       throw new Error("Division by zero is not allowed.");
     }
-    return a / b;
+    return roundTo(a / b, 4);
   } catch (error) {
-    expression.length = 0;
-    return populateDisplay("Math Error");
+    return null;
   }
 }
 
@@ -31,14 +35,18 @@ function operate(operator, a, b) {
     return subtract(a, b);
   }
 
-  if (operator === "*") {
+  if (operator === "x") {
     return multiply(a, b);
   }
 
-  if (operator === "/") {
+  if (operator === "÷") {
     return divide(a, b);
   }
 }
+
+let operatorClicked = false;
+let dotOn = false;
+let equalTo = false;
 
 function populateDisplay(value) {
   const displayBox = document.querySelector(".display");
@@ -46,10 +54,19 @@ function populateDisplay(value) {
 }
 
 function clearDisplay() {
+  dotOn = false;
   const displayBox = document.querySelector(".display");
   displayBox.innerText = "";
 }
 
+function error() {
+  populateDisplay("Math Error");
+  expression.length = 0;
+  operatorClicked = false;
+  return;
+}
+
+// Event listener
 function addEvent(type, selector, callback, parent = document) {
   parent.addEventListener(type, (e) => {
     if (e.target.matches(selector)) {
@@ -59,14 +76,16 @@ function addEvent(type, selector, callback, parent = document) {
 }
 
 const expression = [];
-let operatorClicked = false;
 
+// storage
 function store(value) {
   const lastItem = expression[expression.length - 1];
 
   if (lastItem !== undefined && !isNaN(lastItem)) {
-    if (value == "+" || value == "-" || value == "*" || value == "/") {
+    if (value == "+" || value == "-" || value == "x" || value == "÷") {
       expression.push(value);
+    } else if (value == ".") {
+      expression[expression.length - 1] = lastItem + value;
     } else {
       expression[expression.length - 1] = lastItem + value;
     }
@@ -83,13 +102,22 @@ function accessStorage() {
 }
 
 addEvent("click", ".digit", (e) => {
+  if (equalTo) {
+    clearDisplay();
+  }
+  equalTo = false;
+  afterError();
   const value = e.target.innerText;
   populateDisplay(value);
   store(value);
   operatorClicked = false;
+  if (value.includes(".")) {
+    dotOn = true;
+  }
 });
 
 addEvent("click", ".operator", (e) => {
+  afterError();
   const value = e.target.innerText;
   if (operatorClicked === false) {
     if (expression.length == 3) {
@@ -98,7 +126,13 @@ addEvent("click", ".operator", (e) => {
       const a = parseFloat(values.a);
       const b = parseFloat(values.b);
       const ans = operate(operator, a, b);
+
       clearDisplay();
+
+      if (ans === null || isNaN(ans)) {
+        error();
+      }
+
       populateDisplay(ans);
       populateDisplay(value);
       expression.length = 0;
@@ -111,18 +145,82 @@ addEvent("click", ".operator", (e) => {
       operatorClicked = true;
     }
   }
+  dotOn = false;
 });
 
 addEvent("click", ".operation", (e) => {
-  const values = accessStorage();
-  const operator = values.operator;
-  const a = parseFloat(values.a);
-  const b = parseFloat(values.b);
+  if (expression.length == 3) {
+    afterError();
+    const values = accessStorage();
+    const operator = values.operator;
+    const a = parseFloat(values.a);
+    const b = parseFloat(values.b);
+    const ans = operate(operator, a, b);
 
-  const ans = operate(operator, a, b);
-  clearDisplay();
-  populateDisplay(ans);
-  expression.length = 0;
-  store(ans);
-  operatorClicked = false;
+    clearDisplay();
+
+    if (ans === null || isNaN(ans)) {
+      error();
+    }
+
+    populateDisplay(ans);
+    store(ans);
+    expression.length = 0;
+    operatorClicked = false;
+    equalTo = true;
+  }
 });
+
+addEvent("click", ".dot", (e) => {
+  afterError();
+  const value = e.target.innerText;
+  if (dotOn == false) {
+    if (expression.length == 0) {
+      populateDisplay(`0${value}`);
+      store(`0${value}`);
+    } else {
+      populateDisplay(value);
+      store(value);
+    }
+    operatorClicked = true;
+    dotOn = true;
+  } else {
+    return;
+  }
+});
+
+addEvent("click", ".clear", (e) => {
+  operatorClicked = false;
+  dotOn = false;
+  equalTo = false;
+  clearDisplay();
+  expression.length = 0;
+});
+
+addEvent("click", ".backspace", () => {
+  if (expression.length === 0) return;
+
+  let lastItem = expression[expression.length - 1];
+
+  if (!isNaN(lastItem)) {
+    lastItem = lastItem.slice(0, -1);
+
+    if (lastItem === "") {
+      expression.pop();
+    } else {
+      expression[expression.length - 1] = lastItem;
+    }
+  } else {
+    expression.pop();
+  }
+
+  clearDisplay();
+  expression.forEach((item) => populateDisplay(item));
+});
+
+function afterError() {
+  const displayBox = document.querySelector(".display");
+  if (displayBox.innerText == "Math Error") {
+    displayBox.innerText = "";
+  }
+}
